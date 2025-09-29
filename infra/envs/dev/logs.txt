@@ -1,0 +1,28 @@
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mReference to undeclared input variable[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  on main.tf line 47, in module "dns":
+[31m│[0m [0m  47:     domain_name = [4mvar.domain_name[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mAn input variable with the name "domain_name" has not been declared. This
+[31m│[0m [0mvariable can be declared with a variable "domain_name" {} block.
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnsupported attribute[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  on outputs.tf line 20, in output "dns_record_id":
+[31m│[0m [0m  20:     value       = module.dns[4m.dns_record_id[0m[0m
+[31m│[0m [0m    [90m├────────────────[0m
+[31m│[0m [0m[0m    [90m│[0m [1mmodule.dns[0m is a object
+[31m│[0m [0m[0m
+[31m│[0m [0mThis object does not have an attribute named "dns_record_id".
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mReference to undeclared input variable[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  on ../../modules/dns/outputs.tf line 28, in output "target_ip":
+[31m│[0m [0m  28:     value       = [4mvar.server_ip[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mAn input variable with the name "server_ip" has not been declared. This
+[31m│[0m [0mvariable can be declared with a variable "server_ip" {} block.
+[31m╵[0m[0m

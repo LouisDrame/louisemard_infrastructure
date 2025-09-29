@@ -1,0 +1,54 @@
+- name: Create infrastructure stack
+  hosts: infraserver
+  gather_facts: yes
+  vars:
+    deploy_user: deploy
+    ssh_port: 22
+
+    gitea_domain: "git.louisemard.dev"
+    infisical_domain: "vault.louisemard.dev"
+
+    gitea_dir: "/opt/gitea"
+    infisical_dir: "/opt/infisical"
+
+  become: yes
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+  tasks:
+    - name: Install nginx for reverse proxy
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+    - name: Start nginx and enable at boot
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: yes
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: 
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg
+          - lsb-release
+        state: present
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        state: present
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        name: docker-ce
+        state: present
+        update_cache: yes

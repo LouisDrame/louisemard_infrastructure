@@ -1,0 +1,107 @@
+- name: My first playbook
+  hosts: myhosts
+  vars:
+    deploy_user: deploy
+    ssh_port: 22
+  become: yes
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+    - name: Restart fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
+  # Tasks to be executed on the remote hosts
+  tasks:
+    # Ensure we can connect to the server
+    - name: Wait for server to be ready
+      wait_for_connection:
+        delay: 10
+        timeout: 300
+        sleep: 5
+    - name: Show Python version
+      debug:
+        msg: "Ansible is using Python {{ ansible_python_version }} on the remote host."
+    
+    # Ensure the system is up to date
+    - name: Update packages
+      ansible.builtin.apt:
+        name: "*"
+        update_cache: yes
+        cache_valid_time: 0
+        state: latest
+    
+    # UFW Firewall setup
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+    - name: Configure port 80 for HTTP
+      community.general.ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+    - name: Configure port 443 for HTTPS
+      community.general.ufw:
+        rule: allow
+        port: 443
+        proto: tcp
+    - name: Configure SSH port
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        logging: on
+    
+    # User management
+    - name: Create deploy user
+      user:
+        name: "{{ deploy_user }}"
+        comment: "Deployment User"
+        groups: sudo
+        shell: /bin/bash
+        password: "!"  # Locked password, from docs
+        state: present
+    - name: Configure sudo without password for deploy
+      lineinfile:
+        path: /etc/sudoers.d/{{ deploy_user }}
+        line: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL"
+        create: yes
+        mode: '0440'
+        validate: 'visudo -cf %s'
+    - name: Set up SSH key for deploy user
+      authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ lookup('file', '/workspace/infra/ssh/hetzner/hetzner.pub') }}"
+        state: present
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: yes
+      notify: Restart SSH
+    - name: Disable password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        backup: yes
+      notify: Restart SSH
+
+    # Fail2ban installation and configuration
+    - name: Fail2ban installation
+      ansible.builtin.apt:
+        name: fail2ban
+        state: present
+    - name: Deploy Fail2ban configuration
+      ansible.builtin.template:
+        src: "../../infra/config/config.local.j2"
+        dest: /etc/fail2ban/jail.local
+      notify: Restart fail2ban

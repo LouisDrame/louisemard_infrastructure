@@ -1,0 +1,84 @@
+- name: Setup Nginx + SSL (certbot)
+  hosts: webserver
+  become: yes
+  vars:
+    domain_name: "louisemard.dev"
+    maintenance_email: "contact.louisemard@icloud.com"
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+      # notify: Restart Nginx
+    - name: Start nginx and enable at boot
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: yes
+    # Create the nginx folder if it doesn't exist
+    - name: Ensure /var/www/{{ domain_name }} exists
+      ansible.builtin.file:
+        path: /var/www/{{ domain_name }}
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+    # Upload the Nginx site configuration file
+    - name: Upload Nginx site configuration
+      ansible.builtin.template:
+        src: ../../infra/config/nginx-site.j2
+        dest: /etc/nginx/sites-available/{{ domain_name }}
+      notify: Restart Nginx
+    # Remove the default Nginx configuration if it exists
+    - name: Remove default Nginx site configuration
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart Nginx
+    # Enable the new site by creating a symlink
+    - name: Enable Nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/{{ domain_name }}
+        dest: /etc/nginx/sites-enabled/{{ domain_name }}
+        state: link
+      notify: Restart Nginx
+    - name: Add HTML page
+      ansible.builtin.template:
+        src: ../../statics/index.html.j2
+        dest: /var/www/{{ domain_name }}/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+    - name: Add CSS file
+      ansible.builtin.template:
+        src: ../../statics/style.css.j2  # ← Votre fichier actuel
+        dest: /var/www/{{ domain_name }}/style.css
+        owner: www-data
+        group: www-data
+        mode: '0644'
+    # Installation certbot
+    - name: Install Certbot
+      apt:
+        name: 
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    # Obtenir certificat
+    - name: Obtain SSL certificate
+      command: >
+        certbot --nginx 
+        -d {{ domain_name }} 
+        -d www.{{ domain_name }}
+        --non-interactive 
+        --agree-tos 
+        --email {{ maintenance_email }}
+        --redirect

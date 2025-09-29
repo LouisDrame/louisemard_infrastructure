@@ -1,0 +1,32 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+
+# Secrets
+secrets.auto.tfvars
+*.pub
+!*.pub
+**/ssh/*
+
+# Ansible
+**/inventory.ini
+*.retry
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.docker/

@@ -1,0 +1,16 @@
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 86400
+
+[sshd]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+findtime = 600

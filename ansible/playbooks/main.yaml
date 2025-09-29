@@ -1,0 +1,3 @@
+- import_playbook: common.yaml
+- import_playbook: web-stack.yaml
+- import_playbook: infra-stack.yaml
