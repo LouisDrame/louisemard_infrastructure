@@ -102,6 +102,6 @@
         state: present
     - name: Deploy Fail2ban configuration
       ansible.builtin.template:
-        src: "../../infra/config/config.local.j2"
+        src: "../templates/config/config.local.j2"
         dest: /etc/fail2ban/jail.local
       notify: Restart fail2ban

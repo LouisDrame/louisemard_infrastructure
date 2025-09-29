@@ -65,13 +65,6 @@ variable "dns_records" {
     default     = {}
 }
 
-# Fail2ban configuration variable
-variable "fail2ban_config_path" {
-    type        = string
-    description = "Path to the Fail2ban configuration file"
-    default     = "../../infra/config/config.local.j2"
-}
-
 variable "domain_name" {
     type = string
     description = "The domain name to manage"

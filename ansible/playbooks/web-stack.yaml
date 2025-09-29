@@ -34,7 +34,7 @@
     # Upload the Nginx site configuration file
     - name: Upload Nginx site configuration
       ansible.builtin.template:
-        src: ../../infra/config/nginx-site.j2
+        src: ../templates/config/nginx-site.j2
         dest: /etc/nginx/sites-available/{{ domain_name }}
       notify: Restart Nginx
     # Remove the default Nginx configuration if it exists
@@ -52,14 +52,14 @@
       notify: Restart Nginx
     - name: Add HTML page
       ansible.builtin.template:
-        src: ../../statics/index.html.j2
+        src: ../templates/web/index.html.j2
         dest: /var/www/{{ domain_name }}/index.html
         owner: www-data
         group: www-data
         mode: '0644'
     - name: Add CSS file
       ansible.builtin.template:
-        src: ../../statics/style.css.j2  # ← Votre fichier actuel
+        src: ../templates/web/style.css.j2  # ← Votre fichier actuel
         dest: /var/www/{{ domain_name }}/style.css
         owner: www-data
         group: www-data
