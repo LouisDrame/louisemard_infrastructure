@@ -4,11 +4,9 @@
   vars:
     deploy_user: deploy
     ssh_port: 22
+    maintenance_email: "contact.louisemard@icloud.com"
 
-    gitea_domain: "git.louisemard.dev"
     infisical_domain: "vault.louisemard.dev"
-
-    gitea_dir: "/opt/gitea"
     infisical_dir: "/opt/infisical"
 
   become: yes
@@ -52,3 +50,26 @@
         name: docker-ce
         state: present
         update_cache: yes
+    - name: Start docker service and enable at boot
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: yes
+    - name: Add deploy user to docker group
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        groups: docker
+        append: yes
+    # Reset SSH connection to apply docker group
+    - name: Reset SSH connection to apply docker group
+      meta: reset_connection
+    # Installation de certbot pour les certificats SSL
+    # On l'installe ici car on en aura besoin pour les différents services (infisical, gitea, etc.)
+    - name: Install Certbot
+      apt:
+        name: 
+          - certbot
+          - python3-certbot-nginx
+        state: present
+    # Import gitea tasks
+- import_playbook: gitea.yaml

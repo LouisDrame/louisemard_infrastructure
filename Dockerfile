@@ -4,7 +4,7 @@ FROM alpine:3.22
 
 COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/opentofu
 
-RUN apk add --no-cache curl git openssh-client rsync python3 py3-pip pipx sudo
+RUN apk add --no-cache curl git openssh-client rsync python3 py3-pip pipx sudo openssl
 # Set environment variables for pipx to install packages globally
 ENV PIPX_HOME=/usr/local/pipx
 ENV PIPX_BIN_DIR=/usr/local/bin
@@ -20,7 +20,8 @@ USER appuser
 
 # Install Ansible collections
 RUN ansible-galaxy collection install community.general \
-    && ansible-galaxy collection install ansible.posix 
+    && ansible-galaxy collection install ansible.posix \
+    && ansible-galaxy collection install community.docker
 
 # Verify installations
 RUN opentofu --version && ansible --version && ansible-runner --version

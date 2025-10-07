@@ -1,0 +1,63 @@
+version: "3"
+
+services:
+  backend:
+    container_name: infisical-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    image: infisical/infisical:latest-postgres
+    pull_policy: always
+    ports:
+      - "8080:8080"  # Port interne uniquement, Nginx fera le proxy
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DB_CONNECTION_URI=postgres://{{ infisical_db_user }}:{{ infisical_db_password }}@db:5432/{{ infisical_db_name }}
+      - REDIS_URL=redis://redis:6379
+      - SITE_URL=https://{{ infisical_domain }}
+      - ENCRYPTION_KEY={{ infisical_encryption_key }}
+      - AUTH_SECRET={{ infisical_auth_secret }}
+    networks:
+      - infisical
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: infisical-redis
+    restart: always
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - infisical
+    volumes:
+      - redis_data:/data
+
+  db:
+    container_name: infisical-db
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER={{ infisical_db_user }}
+      - POSTGRES_PASSWORD={{ infisical_db_password }}
+      - POSTGRES_DB={{ infisical_db_name }}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - infisical
+    healthcheck:
+      test: "pg_isready --username={{ infisical_db_user }} && psql --username={{ infisical_db_user }} --list"
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  pg_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  infisical:

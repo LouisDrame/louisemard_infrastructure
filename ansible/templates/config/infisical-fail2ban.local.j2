@@ -1,0 +1,14 @@
+[Definition]
+failregex = .*(Failed authentication|invalid credentials|unauthorized access).* from <HOST>
+            .*"POST /api/auth/login.*" (401|403) .* <HOST>
+            .*"POST /api/v1/auth/login.*" (401|403) .* <HOST>
+ignoreregex =
+
+[infisical]
+enabled = true
+port = http,https
+filter = infisical
+logpath = /var/log/nginx/infisical-access.log
+maxretry = 3
+bantime = 7200
+findtime = 300

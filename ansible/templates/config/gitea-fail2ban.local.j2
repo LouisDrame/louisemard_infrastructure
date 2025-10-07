@@ -1,0 +1,13 @@
+[Definition]
+failregex = .*(Failed authentication attempt|invalid credentials).* from <HOST>
+ignoreregex =
+
+# filepath: /etc/fail2ban/jail.d/gitea.local
+[gitea]
+enabled = true
+port = http,https
+filter = gitea
+logpath = /var/log/nginx/gitea-access.log
+maxretry = 5
+bantime = 3600
+findtime = 600

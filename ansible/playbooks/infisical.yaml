@@ -1,0 +1,84 @@
+- name: Infisical setup
+  hosts: infraserver
+  become: yes
+
+  vars:
+    infisical_db_user: "infisical"
+    infisical_db_password: "{{ lookup('env', 'INFISICAL_DB_PASSWORD') | default('CHANGEME_DB_PASSWORD', true) }}"
+    infisical_db_name: "infisical"
+    infisical_encryption_key: "{{ lookup('env', 'INFISICAL_ENCRYPTION_KEY') | default('CHANGEME_ENCRYPTION_KEY', true) }}"
+    infisical_auth_secret: "{{ lookup('env', 'INFISICAL_AUTH_SECRET') | default('CHANGEME_AUTH_SECRET', true) }}"
+    infisical_dir: "/opt/infisical"
+    infisical_domain: "vault.louisemard.dev"
+    maintenance_email: "contact.louisemard@icloud.com"
+    deploy_user: deploy
+  
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+    - name: Restart fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
+  tasks:
+    - name: Create Infisical directory
+      ansible.builtin.file:
+        path: "{{ infisical_dir }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0755'
+    - name: Create Infisical docker-compose file
+      ansible.builtin.template:
+        src: ../templates/docker/infisical-docker-compose.yaml.j2
+        dest: "{{ infisical_dir }}/docker-compose.yaml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0644'
+    - name: Start Infisical with docker-compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ infisical_dir }}"
+        state: present
+      become_user: "{{ deploy_user }}"
+    # - name: Wait for Infisical to be up
+    #   ansible.builtin.uri:
+    #     url: "http://127.0.0.1:8080"
+    #     method: GET
+    #     status_code: 200
+    #   register: infisical_result
+    #   until: infisical_result.status == 200
+    #   retries: 30
+    #   delay: 2
+    # SSL certificate for Infisical
+    - name: Obtain SSL certificate
+      command: >
+        certbot certonly --standalone
+        -d {{ infisical_domain }} 
+        --non-interactive 
+        --agree-tos 
+        --email {{ maintenance_email }}
+        --pre-hook "systemctl stop nginx"
+        --post-hook "systemctl start nginx" 
+    - name: Create Nginx configuration for Infisical
+      ansible.builtin.template:
+        src: ../templates/nginx/infisical-nginx.j2
+        dest: /etc/nginx/sites-available/{{ infisical_domain }}
+      notify: Restart Nginx
+    - name: Enable Nginx site for Infisical
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/{{ infisical_domain }}  
+        dest: /etc/nginx/sites-enabled/{{ infisical_domain }}
+        state: link
+      notify: Restart Nginx
+    - name: Remove default Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart Nginx
+    - name: Create fail2ban configuration for Infisical
+      ansible.builtin.template:
+        src: ../templates/config/infisical-fail2ban.local.j2
+        dest: /etc/fail2ban/jail.d/infisical.local
+      notify: Restart fail2ban

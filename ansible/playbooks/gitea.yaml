@@ -1,0 +1,84 @@
+# Gitea setup
+- name: Gitea Setup
+  hosts: infraserver
+  become: yes
+
+  vars:
+    gitea_db_password: "{{ lookup('env', 'GITEA_DB_PASSWORD') | default('CHANGEME_DB_PASSWORD', true) }}"
+    gitea_db_root_password: "{{ lookup('env', 'GITEA_DB_ROOT_PASSWORD') | default('CHANGEME_ROOT_PASSWORD', true) }}"
+    gitea_dir: "/opt/gitea"
+    gitea_domain: "git.louisemard.dev"
+    maintenance_email: "contact.louisemard@icloud.com"
+    deploy_user: deploy
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Create Gitea directory
+      ansible.builtin.file:
+        path: "{{ gitea_dir }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0755'
+
+    - name: Create Gitea docker-compose file
+      ansible.builtin.template:
+        src: ../templates/docker/gitea-docker-compose.yaml.j2
+        dest: "{{ gitea_dir }}/docker-compose.yaml"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0644'
+
+    - name: Start Gitea with docker-compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ gitea_dir }}"
+        state: present
+      become_user: "{{ deploy_user }}"
+
+    - name: Wait for Gitea to be up
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:3000"
+        status_code: 200
+      register: gitea_result
+      retries: 30
+      delay: 2
+      until: gitea_result.status == 200
+
+    # SSL certificate for Gitea
+    - name: Obtain SSL certificate
+      command: >
+        certbot certonly --standalone
+        -d {{ gitea_domain }} 
+        --non-interactive 
+        --agree-tos 
+        --email {{ maintenance_email }}
+        --pre-hook "systemctl stop nginx"
+        --post-hook "systemctl start nginx"
+    # Nginx configuration for Gitea
+    - name: Upload Nginx configuration for Gitea
+      ansible.builtin.template:
+        src: ../templates/nginx/gitea-nginx.j2
+        dest: /etc/nginx/sites-available/{{ gitea_domain }}
+      notify: Restart Nginx
+    # Move nginx configuration to sites-enabled (via symlink)
+    - name: Enable Nginx site for Gitea
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/{{ gitea_domain }}
+        dest: /etc/nginx/sites-enabled/{{ gitea_domain }}
+        state: link
+      notify: Restart Nginx
+    # Add fail2ban configuration for Gitea
+    # Directory should already exist, but just in case
+    - name: Create fail2ban subdirectory if not exists
+      ansible.builtin.file:
+        path: /etc/fail2ban/jail.d
+        state: directory
+    - name: Create fail2ban configuration for Gitea
+      ansible.builtin.template:
+        src: ../templates/config/gitea-fail2ban.local.j2
+        dest: /etc/fail2ban/jail.d/gitea.local
