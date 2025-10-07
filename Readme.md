@@ -1,68 +1,146 @@
 # Infrastructure as Code - DevOps Stack
 
-## 🏗️ Architecture
+Automated infrastructure deployment for a production-ready multi-server environment using Infrastructure as Code principles.
+
+## What This Does
+
+This project automatically provisions and configures a complete infrastructure with:
+- **2 cloud servers** (Hetzner Cloud)
+- **DNS management** (OVH)
+- **Self-hosted Git** (Gitea)
+- **Secret management** (Infisical)
+- **SSL certificates** (Let's Encrypt)
+- **Security hardening** (Firewall, Fail2ban, SSH)
+
+All configured with a few commands, repeatable and versioned.
+
+## Architecture Overview
 
 ```
 ┌─────────────────────┐    ┌─────────────────────────────┐
-│   Serveur Web       │    │      Serveur Infra         │
-│   (cx22, fsn1)      │    │      (cx32, nbg1)          │
+│   Web Server        │    │   Infrastructure Server     │
+│   (cx22, fsn1)      │    │   (cx32, nbg1)              │
 ├─────────────────────┤    ├─────────────────────────────┤
-│ • Site web          │    │ • Gitea (Docker)            │
-│ • Nginx             │    │ • Infisical (Docker)        │
-│ • SSL/TLS           │    │ • Nginx (reverse proxy)    │
+│ • Static Website    │    │ • Gitea (Git hosting)       │
+│ • Nginx             │    │ • Infisical (Secrets)       │
+│ • SSL/TLS           │    │ • Nginx (reverse proxy)     │
 └─────────────────────┘    └─────────────────────────────┘
         │                           │
         ▼                           ▼
   louisemard.dev              git.louisemard.dev
-  www.louisemard.dev         vault.louisemard.dev
+                             vault.louisemard.dev
 ```
 
-## 🚀 Déploiement
+##  Tech Stack
 
-### Prérequis
-- Terraform/OpenTofu
-- Ansible
-- Clés API Hetzner et OVH
+**Infrastructure Layer:**
+- Terraform → Provisions cloud resources (servers, DNS)
+- Ansible → Configures servers and deploys services
 
-### 1. Infrastructure (Terraform)
-```bash
-cd infra/envs/dev
-terraform init
-terraform plan
+**Application Layer:**
+- Docker → Runs isolated services
+- Nginx → Web server & reverse proxy
+- Certbot → Automatic SSL certificates
+
+**Services:**
+- Gitea → Self-hosted Git repositories
+- Infisical → Secrets/credentials management
+
+## How It Works
+
+### 1. Infrastructure Provisioning (Terraform)
+
+Terraform reads your configuration and creates:
+- 2 servers on Hetzner Cloud
+- DNS records pointing to these servers
+- Firewall rules
+- SSH keys for access
+
+**What happens:**
+```
 terraform apply
+  ↓
+Creates servers on Hetzner
+  ↓
+Configures DNS on OVH
+  ↓
+Returns server IPs
 ```
 
-### 2. Configuration (Ansible)
-```bash
-cd ansible
-ansible-playbook -i inventory/inventory.ini playbooks/main.yaml
+### 2. Configuration Management (Ansible)
+
+Ansible connects to the servers via SSH and:
+- Hardens security (firewall, fail2ban, SSH)
+- Installs required software (Docker, Nginx)
+- Deploys services (Gitea, Infisical)
+- Configures SSL certificates
+
+**What happens:**
+```
+ansible-playbook main.yaml
+  ↓
+Runs common.yaml → Security setup on all servers
+  ↓
+Runs web-stack.yaml → Nginx + website on web server
+  ↓
+Runs infra-stack.yaml → Gitea + Infisical on infra server
 ```
 
-## 📁 Structure
+### 3. Service Deployment (Docker)
+
+Each service runs in isolated Docker containers:
+
+**Gitea:**
+```
+Docker Compose starts:
+  ├── Gitea app (port 3000)
+  └── MySQL database
+     ↓
+Nginx proxies → git.louisemard.dev:443 → localhost:3000
+```
+
+**Infisical:**
+```
+Docker Compose starts:
+  ├── Infisical app (port 8080)
+  ├── PostgreSQL database
+  └── Redis cache
+     ↓
+Nginx proxies → vault.louisemard.dev:443 → localhost:8080
+```
+
+## Project Structure (Simplified)
 
 ```
-├── infra/                  # Infrastructure Terraform
-│   ├── modules/
-│   │   ├── compute/        # Serveurs Hetzner
-│   │   └── dns/           # DNS OVH
-│   └── envs/dev/          # Environnement dev
-├── ansible/               # Configuration Ansible
+.
+├── infra/                  # Terraform (creates servers & DNS)
+│   └── envs/dev/
+│       ├── main.tf         # Server definitions
+│       ├── variables.tf    # Input variables
+│       └── secrets.auto.tfvars  # API keys (not committed)
+│
+├── ansible/                # Ansible (configures servers)
 │   ├── inventory/
-│   ├── playbooks/
-│   │   ├── common.yaml    # Setup commun
-│   │   ├── web-stack.yaml # Serveur web
-│   │   └── infra-stack.yaml # Serveur infra
-│   └── templates/
-└── statics/              # Contenu web statique
+│   │   └── inventory.ini   # Server IPs
+│   ├── playbooks/          # What to do
+│   │   ├── main.yaml       # Runs everything
+│   │   ├── common.yaml     # Security setup
+│   │   ├── web-stack.yaml  # Web server
+│   │   ├── gitea.yaml      # Git hosting
+│   │   └── infisical.yaml  # Secrets manager
+│   └── templates/          # Configuration files
+│       ├── docker/         # Docker Compose files
+│       └── nginx/          # Nginx configs
+│
+└── scripts/
+    └── secrets.sh          # Generates random passwords
 ```
 
-## 🔐 Secrets
 
-Les secrets sont dans `secrets.auto.tfvars` (non commité).
-Template dans `secrets.auto.tfvars.example`.
+---
 
-## 🌐 Services
+**Author**: Louis Emard  
+**Contact**: contact.louisemard@icloud.com  
+**Website**: https://louisemard.dev
 
-- **Site web**: https://louisemard.dev
-- **Gitea**: https://git.louisemard.dev (à venir)
-- **Infisical**: https://vault.louisemard.dev (à venir)
+*Last Updated: October 2025*
