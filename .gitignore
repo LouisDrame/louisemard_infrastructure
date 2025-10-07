@@ -11,6 +11,7 @@ secrets.auto.tfvars
 *.pub
 !*.pub
 **/ssh/*
+/secrets/*
 
 # Ansible
 **/inventory.ini
