@@ -34,7 +34,7 @@
     # Upload the Nginx site configuration file
     - name: Upload Nginx site configuration
       ansible.builtin.template:
-        src: ../templates/config/nginx-site.j2
+        src: ../templates/nginx/nginx-site.j2
         dest: /etc/nginx/sites-available/{{ domain_name }}
       notify: Restart Nginx
     # Remove the default Nginx configuration if it exists
