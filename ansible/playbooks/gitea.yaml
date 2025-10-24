@@ -11,6 +11,14 @@
     maintenance_email: "contact.louisemard@icloud.com"
     deploy_user: deploy
 
+    # SMTP settings
+    gitea_smtp_host: "{{ lookup('env', 'GITEA_SMTP_HOST') | default('smtp-relay.brevo.com', true) }}"
+    gitea_smtp_port: "{{ lookup('env', 'GITEA_SMTP_PORT') | default('587', true) }}"
+    gitea_smtp_user: "{{ lookup('env', 'GITEA_SMTP_USER') | default('CHANGEME_SMTP_USER', true) }}"
+    gitea_smtp_password: "{{ lookup('env', 'GITEA_SMTP_PASSWORD') | default('CHANGEME_SMTP_PASS', true) }}"
+    gitea_smtp_from: "{{ lookup('env', 'GITEA_SMTP_FROM') | default('gitea@louisemard.dev', true) }}"
+    gitea_mail_name: "{{ lookup('env', 'GITEA_MAIL_NAME') | default('Gitea | louisemard.dev', true) }}"
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
@@ -45,8 +53,8 @@
         url: "http://127.0.0.1:3000"
         status_code: 200
       register: gitea_result
-      retries: 30
-      delay: 2
+      retries: 50
+      delay: 5
       until: gitea_result.status == 200
 
     # SSL certificate for Gitea
